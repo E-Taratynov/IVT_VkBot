@@ -8,3 +8,4 @@ if os.path.exists(dotenv_path):
     load_dotenv(dotenv_path)
 
 TOKEN = os.getenv("TOKEN")
+GOOGLE_DRIVE_URL = os.getenv("GOOGLE_DRIVE_URL")
