@@ -43,8 +43,8 @@ def get_cell_value(ws: worksheet, cell_coordinate: str):
         return None
     
 def parse_schedule_column(ws: worksheet, start_index:str):
+    index = start_index
     days_dict = {0:'понедельник', 1:'вторник', 2:'среда', 3:'четверг', 4:'пятница', 5:'суббота'}
-    index = increase_column_index(start_index, 1)
     week_subjects = []
     for i in range(6):
         day_subjects = parse_schedule_day(ws, index)
@@ -104,17 +104,17 @@ def parse_schedule_day(ws:worksheet, start_index:str):
     
     return day_subjects
 
-def parse_schedule_by_groups(filename="schedule_file.xlsx", worksheet_name="Бакалавры и магистры"):
-    wb = load_workbook(filename)
+def parse_schedule_by_groups(input_filename="schedule_file.xlsx", worksheet_name="Бакалавры и магистры"):
+    wb = load_workbook(input_filename)
     ws = wb[worksheet_name]
     schedule_by_groups = []
     for row in ws.iter_rows(max_row=1, min_col=5, max_col=36):
         for cell in row:
-            index = cell.column_letter + "1"
+            index = cell.coordinate
             group_name = ws[index].value
             if group_name is None:
                 continue
-
+            index = increase_column_index(index, 1)
             week_subjects = parse_schedule_column(ws, index)
             schedule_by_groups.append(
                 {
@@ -124,3 +124,51 @@ def parse_schedule_by_groups(filename="schedule_file.xlsx", worksheet_name="Ба
             )
     with open('schedule_by_groups.json', 'w', encoding='utf-8') as file:
         json.dump(schedule_by_groups, file, ensure_ascii=False, indent=4)
+
+def parse_classrooms(worksheet_name: str, output_filename: str, input_filename='schedule_file.xlsx'):
+    wb = load_workbook(input_filename)
+    ws = wb[worksheet_name]
+    classrooms = []
+    for row in ws.iter_rows(max_row=1, min_col=5, max_col=31):
+        for cell in row:
+            index = cell.coordinate
+            classroom_name = int(ws[index].value)
+            index = increase_column_index(index, 1)
+            classroom_description = ws[index].value
+            index = increase_column_index(index, 1)
+
+            classroom_week = parse_schedule_column(ws, index)
+            classrooms.append(
+                {
+                    'classroom': classroom_name,
+                    'description': classroom_description,
+                    'subjects': classroom_week
+                }
+            )
+    with open(output_filename, 'w', encoding='utf-8') as file:
+        json.dump(classrooms, file, ensure_ascii=False, indent=4)
+    
+def parse_professors(worksheet_name='Преподаватели', output_filename='professors.json', input_filename='schedule_file.xlsx'):
+    wb = load_workbook(input_filename)
+    ws = wb[worksheet_name]
+    professors_list = []
+    for row in ws.iter_rows(max_row=1, min_col=5, max_col=31):
+        for cell in row:
+            index = cell.coordinate
+            professor_name = ws[index].value
+            index = increase_column_index(index, 1)
+            professor_schedule_week = parse_schedule_column(ws, index)
+            professors_list.append(
+                {
+                    'professor': professor_name,
+                    'subjects': professor_schedule_week
+                }
+            )
+    with open(output_filename, 'w', encoding='utf-8') as file:
+        json.dump(professors_list, file, ensure_ascii=False, indent=4)
+
+def parse_all_sheets():
+    parse_schedule_by_groups()
+    parse_classrooms('аудитории', 'classrooms.json')
+    parse_classrooms('аудитории (июнь сессия, предзащ', 'classrooms_session.json')
+    parse_professors()
