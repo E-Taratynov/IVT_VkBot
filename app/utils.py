@@ -13,36 +13,26 @@ async def get_schedule_groups(filename='schedule_by_groups.json') -> list:
 
 async def get_schedule_classrooms(filename='classrooms.json') -> list:
     classrooms = []
-    async with aiofiles.open(filename, 'r') as f:
+    async with aiofiles.open(filename, 'r', encoding='utf-8') as f:
         content = await f.read()
     file = json.loads(content)
     for classroom in file:
-        classrooms.append(
-            {
-                'classroom': classroom['classroom'],
-                'description': classroom['description']
-            }
-        )
+        classrooms.append(classroom['classroom'])
     return classrooms
     
 
 async def get_schedule_classrooms_session(filename='classrooms_session.json') -> list:
     classrooms = []
-    async with aiofiles.open(filename, 'r') as f:
+    async with aiofiles.open(filename, 'r', encoding='utf-8') as f:
         content = await f.read()
     file = json.loads(content)
     for classroom in file:
-        classrooms.append(
-            {
-                'classroom': classroom['classroom'],
-                'description': classroom['description']
-            }
-        )
+        classrooms.append(classroom['classroom'])
     return classrooms
 
 async def get_schedule_professors(filename='professors.json') -> list:
     professors = []
-    async with aiofiles.open(filename, 'r') as f:
+    async with aiofiles.open(filename, 'r', encoding='utf-8') as f:
         content = await f.read()
     file = json.loads(content)
     for professor in file:

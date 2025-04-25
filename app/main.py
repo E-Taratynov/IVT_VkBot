@@ -3,8 +3,10 @@ from vkbottle import GroupEventType, Keyboard, BaseStateGroup, Callback
 from utils import (get_schedule_classrooms, get_schedule_classrooms_session,
 get_schedule_groups, get_schedule_professors, get_formatted_output)
 from config import TOKEN
+import logging
 
 bot = Bot(token=TOKEN)
+logging.basicConfig(level=logging.INFO)
 
 class MenuStates(BaseStateGroup):
     HOME_STATE = 'home'
@@ -20,18 +22,18 @@ class MenuStates(BaseStateGroup):
 unregistered_keyboard = (
     Keyboard(one_time=False, inline=False)
     .add(Callback('Расписание', payload={'cmd': 'schedule', 'text': 'Расписание'}))
-    .add(Callback('Регистрация', payload={'cmd': 'register'}))
+    .add(Callback('Регистрация', payload={'cmd': 'register', 'text': 'Регистрация'}))
 )
 
 home_keyboard = (
     Keyboard(one_time=False, inline=False)
     .add(Callback('Расписание', payload={'cmd': 'schedule', 'text': 'Расписание'}))
-    .add(Callback('Мои оценки', payload={'state': 'grades'}))
+    .add(Callback('Мои оценки', payload={'state': 'grades', 'text': 'Мои оценки'}))
 )
 
 schedule_keyboard = (
     Keyboard(one_time=False, inline=False)
-    .add(Callback('По группам', payload={'state': 'schedule_groups', 'text': 'По группам'}))
+    .add(Callback('По группам', payload={'state': 'schedule_groups'}))
     .row()
     .add(Callback('По аудиториям', payload={'state': 'schedule_classrooms'}))
     .row()
@@ -39,15 +41,17 @@ schedule_keyboard = (
     .row()
     .add(Callback('По преподавателям', payload={'state': 'schedule_professors'}))
     .row()
-    .add(Callback('Назад', payload={'state': 'home'}))
+    .add(Callback('Назад', payload={'state': 'home', 'text': 'Назад'}))
 )
 
+# Обработчик команды /start
 @bot.on.message(command=('start'))
 async def start(message: Message):
     await message.answer('Это бот ИВТ ЯрГУ.\nЗдесь вы можете узнать свои оценки и расписание занятий.',
                           keyboard=home_keyboard)
     await bot.state_dispenser.set(message.peer_id, MenuStates.HOME_STATE)
-    
+
+# Обработчик кнопки "Расписание"    
 @bot.on.raw_event(GroupEventType.MESSAGE_EVENT, MessageEvent, 
                   rules.PayloadContainsRule({'cmd': 'schedule'}))
 async def schedule_handler(event: MessageEvent):
@@ -55,22 +59,89 @@ async def schedule_handler(event: MessageEvent):
     await event.send_empty_answer()
     await bot.state_dispenser.set(event.peer_id, MenuStates.SCHEDULE_STATE)
 
+# Обработчик кнопки "Назад"
+@bot.on.raw_event(GroupEventType.MESSAGE_EVENT, MessageEvent,
+                  rules.PayloadContainsRule({'state': 'home'}))
+async def return_home(event: MessageEvent):
+    await event.send_message(event.get_payload_json().get('text'), keyboard=home_keyboard)
+    await event.send_empty_answer()
+    await bot.state_dispenser.set(event.peer_id, MenuStates.HOME_STATE)
+
+# Обработчик кпопки "По группам"
 @bot.on.raw_event(GroupEventType.MESSAGE_EVENT, MessageEvent,
                   rules.PayloadContainsRule({'state': 'schedule_groups'}))
 async def show_groups(event: MessageEvent):
     groups = await get_schedule_groups()
     output = '\n'.join(groups)
-    await event.send_message("Введите группу:\n" + output)
+    await event.send_message("Выберите группу:\n" + output)
     await event.send_empty_answer()
     await bot.state_dispenser.set(event.peer_id, MenuStates.SCHEDULE_STATE_GROUPS)
 
+# Обработчик ввода группы
 @bot.on.message(state=MenuStates.SCHEDULE_STATE_GROUPS)
-async def get_schedule_by_groups(message: Message):
+async def get_schedule_by_group(message: Message):
     groups = await get_schedule_groups()
     if message.text in groups:
         await message.answer(await get_formatted_output())
     else:
         await message.answer('Группа не найдена')
+
+# Обработчик кпопки "По аудиториям"
+@bot.on.raw_event(GroupEventType.MESSAGE_EVENT, MessageEvent,
+                  rules.PayloadContainsRule({'state': 'schedule_classrooms'}))
+async def show_classrooms(event: MessageEvent):
+    classrooms = await get_schedule_classrooms()
+    output = '\n'.join(classrooms)
+    await event.send_message("Выберите аудиторию:\n" + output)
+    await event.send_empty_answer()
+    await bot.state_dispenser.set(event.peer_id, MenuStates.SCHEDULE_STATE_CLASSROOMS)
+
+# Обработчик ввода аудитории
+@bot.on.message(state=MenuStates.SCHEDULE_STATE_CLASSROOMS)
+async def get_schedule_by_classroom(message: Message):
+    classrooms = await get_schedule_classrooms()
+    if message.text in classrooms:
+        await message.answer(await get_formatted_output())
+    else:
+        await message.answer('Аудитория не найдена')
+
+# Обработчик кпопки "По аудиториям - сессия, предзащиты"
+@bot.on.raw_event(GroupEventType.MESSAGE_EVENT, MessageEvent,
+                  rules.PayloadContainsRule({'state': 'schedule_classrooms_session'}))
+async def show_classrooms_session(event: MessageEvent):
+    classrooms = await get_schedule_classrooms_session()
+    output = '\n'.join(classrooms)
+    await event.send_message("Выберите аудиторию:\n" + output)
+    await event.send_empty_answer()
+    await bot.state_dispenser.set(event.peer_id, MenuStates.SCHEDULE_STATE_CLASSROOMS_SESSION)
+
+# Обработчик ввода аудитории (сессия)
+@bot.on.message(state=MenuStates.SCHEDULE_STATE_CLASSROOMS_SESSION)
+async def get_schedule_by_classroom_session(message: Message):
+    classrooms = await get_schedule_classrooms_session()
+    if message.text in classrooms:
+        await message.answer(await get_formatted_output())
+    else:
+        await message.answer('Аудитория не найдена')
+
+# Обработчик кпопки "По преподавателям"
+@bot.on.raw_event(GroupEventType.MESSAGE_EVENT, MessageEvent,
+                  rules.PayloadContainsRule({'state': 'schedule_professors'}))
+async def show_professors(event: MessageEvent):
+    professors = await get_schedule_professors()
+    output = '\n'.join(professors)
+    await event.send_message("Выберите преподавателя:\n" + output)
+    await event.send_empty_answer()
+    await bot.state_dispenser.set(event.peer_id, MenuStates.SCHEDULE_STATE_PROFESSORS)
+
+# Обработчик выбора преподавателя
+@bot.on.message(state=MenuStates.SCHEDULE_STATE_PROFESSORS)
+async def get_schedule_by_professor(message: Message):
+    professors = await get_schedule_professors()
+    if message.text in professors:
+        await message.answer(await get_formatted_output())
+    else:
+        await message.answer('Преподаватель не найден')
 
 # Ответ по умолчанию
 @bot.on.message()

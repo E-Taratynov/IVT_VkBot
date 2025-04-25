@@ -134,13 +134,13 @@ def parse_classrooms(worksheet_name: str, output_filename: str, input_filename='
             index = cell.coordinate
             classroom_name = int(ws[index].value)
             index = increase_column_index(index, 1)
-            classroom_description = ws[index].value
+            classroom_description = '-' if ws[index].value is None else ws[index].value
             index = increase_column_index(index, 1)
 
             classroom_week = parse_schedule_column(ws, index)
             classrooms.append(
                 {
-                    'classroom': classroom_name,
+                    'classroom': str(classroom_name),
                     'description': classroom_description,
                     'subjects': classroom_week
                 }
@@ -156,6 +156,8 @@ def parse_professors(worksheet_name='Преподаватели', output_filenam
         for cell in row:
             index = cell.coordinate
             professor_name = ws[index].value
+            if professor_name is None:
+                continue
             index = increase_column_index(index, 1)
             professor_schedule_week = parse_schedule_column(ws, index)
             professors_list.append(
