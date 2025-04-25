@@ -118,7 +118,7 @@ def parse_schedule_by_groups(input_filename="schedule_file.xlsx", worksheet_name
             week_subjects = parse_schedule_column(ws, index)
             schedule_by_groups.append(
                 {
-                    'group_name': group_name,
+                    'group_name': group_name.replace('\n', '').split('О')[0] + 'О',
                     'subjects': week_subjects
                 }
             )
