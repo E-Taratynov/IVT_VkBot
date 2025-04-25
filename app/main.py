@@ -1,8 +1,8 @@
 from vkbottle.bot import Bot, Message, MessageEvent, rules
 from vkbottle import GroupEventType, Keyboard, BaseStateGroup, Callback
 from utils import (get_schedule_classrooms, get_schedule_classrooms_session,
-get_schedule_groups, get_schedule_professors, get_formatted_output, ScheduleFiles)
-from config import TOKEN
+get_schedule_groups, get_schedule_professors, get_formatted_output)
+from config import TOKEN, DataFiles
 import logging
 
 bot = Bot(token=TOKEN)
@@ -87,7 +87,7 @@ async def show_groups(event: MessageEvent):
 async def get_schedule_by_group(message: Message):
     groups = await get_schedule_groups()
     if message.text in groups:
-        await message.answer(await get_formatted_output(ScheduleFiles.GROUPS, message.text))
+        await message.answer(await get_formatted_output(DataFiles.GROUPS, message.text))
     else:
         await message.answer('Группа не найдена')
 

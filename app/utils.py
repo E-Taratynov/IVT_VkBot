@@ -1,12 +1,7 @@
 from typing import Literal
 import aiofiles
 import json
-from enum import Enum
-
-class ScheduleFiles(Enum):
-    GROUPS = 'schedule_by_groups.json'
-    CLASSROOMS = 'classrooms.json'
-    PROFESSORS = 'professors.json'
+from config import DataFiles
 
 async def get_schedule_groups(filename='schedule_by_groups.json') -> list:
     groups = []
@@ -46,14 +41,14 @@ async def get_schedule_professors(filename='professors.json') -> list:
         professors.append(professor['professor'])
     return professors
 
-async def get_formatted_output(filename: Literal[ScheduleFiles.GROUPS, ScheduleFiles.CLASSROOMS,
-                                                 ScheduleFiles.PROFESSORS],
+async def get_formatted_output(filename: Literal[DataFiles.GROUPS, DataFiles.CLASSROOMS,
+                                                 DataFiles.PROFESSORS],
                                                  search_str: str):
     async with aiofiles.open(filename.value, 'r', encoding='utf-8') as f:
         content = await f.read()
     file = json.loads(content)
     output = ''
-    if filename == ScheduleFiles.GROUPS:
+    if filename == DataFiles.GROUPS:
         group_obj = next((obj for obj in file if obj.get('group_name') == search_str), None)
         if group_obj is None:
             return "Группа не найдена"

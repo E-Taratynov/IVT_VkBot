@@ -2,15 +2,16 @@ import json
 from openpyxl import load_workbook, worksheet
 from openpyxl.cell.cell import MergedCell
 import gdown
-from config import GOOGLE_DRIVE_URL
+from config import GOOGLE_DRIVE_URL, DataFiles
 
 
-def download_schedule_file(share_link=GOOGLE_DRIVE_URL, output_path='schedule_file.xlsx'):
+def download_schedule_file(share_link=GOOGLE_DRIVE_URL, output_path=DataFiles.SCHEDULE_FILE.value):
     # Извлекаем ID файла из ссылки
-    file_id = share_link.split('/')[5]
+    link_split = share_link.split('/')[:6]
+    link_until_id = '/'.join(link_split)
     
     # Формируем прямую ссылку для скачивания
-    download_url = f"https://drive.google.com/uc?id={file_id}"
+    download_url = f"{link_until_id}/export?format=xlsx"
     try:
         # Скачиваем файл
         gdown.download(url=download_url, output=output_path, quiet=False, fuzzy=True)
@@ -108,13 +109,13 @@ def parse_schedule_by_groups(input_filename="schedule_file.xlsx", worksheet_name
     wb = load_workbook(input_filename)
     ws = wb[worksheet_name]
     schedule_by_groups = []
-    for row in ws.iter_rows(max_row=1, min_col=5, max_col=36):
+    for row in ws.iter_rows(max_row=1, min_col=7, max_col=37):
         for cell in row:
             index = cell.coordinate
             group_name = ws[index].value
             if group_name is None:
                 continue
-            index = increase_column_index(index, 1)
+            index = increase_column_index(index, 2)
             week_subjects = parse_schedule_column(ws, index)
             schedule_by_groups.append(
                 {
@@ -129,7 +130,7 @@ def parse_classrooms(worksheet_name='аудитории', output_filename='class
     wb = load_workbook(input_filename)
     ws = wb[worksheet_name]
     classrooms = []
-    for row in ws.iter_rows(max_row=1, min_col=5, max_col=31):
+    for row in ws.iter_rows(max_row=1, min_col=7, max_col=34):
         for cell in row:
             index = cell.coordinate
             classroom_name = int(ws[index].value)
@@ -152,7 +153,7 @@ def parse_professors(worksheet_name='Преподаватели', output_filenam
     wb = load_workbook(input_filename)
     ws = wb[worksheet_name]
     professors_list = []
-    for row in ws.iter_rows(max_row=1, min_col=5, max_col=31):
+    for row in ws.iter_rows(min_row=2, max_row=2, min_col=7, max_col=69):
         for cell in row:
             index = cell.coordinate
             professor_name = ws[index].value
