@@ -5,7 +5,7 @@ import gdown
 from config import GOOGLE_DRIVE_URL
 
 
-def download_schedule_file(share_link, output_path='schedule_file.xlsx'):
+def download_schedule_file(share_link=GOOGLE_DRIVE_URL, output_path='schedule_file.xlsx'):
     # Извлекаем ID файла из ссылки
     file_id = share_link.split('/')[5]
     
@@ -125,7 +125,7 @@ def parse_schedule_by_groups(input_filename="schedule_file.xlsx", worksheet_name
     with open('schedule_by_groups.json', 'w', encoding='utf-8') as file:
         json.dump(schedule_by_groups, file, ensure_ascii=False, indent=4)
 
-def parse_classrooms(worksheet_name: str, output_filename: str, input_filename='schedule_file.xlsx'):
+def parse_classrooms(worksheet_name='аудитории', output_filename='classrooms.json', input_filename='schedule_file.xlsx'):
     wb = load_workbook(input_filename)
     ws = wb[worksheet_name]
     classrooms = []
@@ -171,6 +171,5 @@ def parse_professors(worksheet_name='Преподаватели', output_filenam
 
 def parse_all_sheets():
     parse_schedule_by_groups()
-    parse_classrooms('аудитории', 'classrooms.json')
-    parse_classrooms('аудитории (июнь сессия, предзащ', 'classrooms_session.json')
+    parse_classrooms()
     parse_professors()

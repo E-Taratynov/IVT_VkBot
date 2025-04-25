@@ -172,3 +172,8 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+classrooms_session.json
+classrooms.json
+professors.json
+schedule_by_groups.json
+schedule_file.xlsx
