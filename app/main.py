@@ -1,7 +1,8 @@
 from vkbottle.bot import Bot, Message, MessageEvent, rules
 from vkbottle import GroupEventType, Keyboard, BaseStateGroup, Callback
-from utils import (get_schedule_classrooms, get_schedule_classrooms_session,
-get_schedule_groups, get_schedule_professors, get_formatted_output)
+from utils import (get_schedule_classrooms,
+get_schedule_groups, get_schedule_professors, get_formatted_output, check_if_registered,
+check_if_student_exists, get_student_marks_by_user_id, add_new_user)
 from config import TOKEN, DataFiles
 import logging
 
@@ -9,6 +10,7 @@ bot = Bot(token=TOKEN)
 logging.basicConfig(level=logging.INFO)
 
 class MenuStates(BaseStateGroup):
+    REGISTRATION_STATE = 'registration'
     HOME_STATE = 'home'
     UNREGISTERED_STATE = 'unregistered'
     REGISTERED_STATE = 'registered'
@@ -44,9 +46,33 @@ schedule_keyboard = (
 # Обработчик команды /start
 @bot.on.message(command=('start'))
 async def start(message: Message):
-    await message.answer('Это бот ИВТ ЯрГУ.\nЗдесь вы можете узнать свои оценки и расписание занятий.',
+    if await check_if_registered(message.peer_id):
+        await message.answer('Это бот ИВТ ЯрГУ.\nЗдесь вы можете узнать свои оценки и расписание занятий.',
                           keyboard=home_keyboard)
-    await bot.state_dispenser.set(message.peer_id, MenuStates.HOME_STATE)
+        await bot.state_dispenser.set(message.peer_id, MenuStates.HOME_STATE)
+    else:
+         await message.answer('Это бот ИВТ ЯрГУ.\nЗдесь вы можете узнать свои оценки и расписание занятий.',
+                          keyboard=unregistered_keyboard)
+         await bot.state_dispenser.set(message.peer_id, MenuStates.UNREGISTERED_STATE)
+
+# Обработчик кнопки "Регистрация"
+@bot.on.raw_event(GroupEventType.MESSAGE_EVENT, MessageEvent,
+                  rules.PayloadContainsRule({'cmd': 'register'}))
+async def registration_handler(event: MessageEvent):
+    await event.send_message("Введите номер студенческого билета")
+    await event.send_empty_answer()
+    await bot.state_dispenser.set(event.peer_id, MenuStates.REGISTRATION_STATE)
+
+# Обработчик ввода номера студенческого билета
+@bot.on.message(state=MenuStates.REGISTRATION_STATE)
+async def register_user(message: Message):
+    student_id = message.text
+    if await check_if_student_exists(student_id):
+        await add_new_user(message.peer_id, student_id)
+        await message.answer("Успешная регистрация", keyboard=home_keyboard)
+        await bot.state_dispenser.set(message.peer_id, MenuStates.HOME_STATE)
+    else:
+        await message.answer("Студента с данным номером билета не существует")
 
 # Обработчик кнопки "Расписание"    
 @bot.on.raw_event(GroupEventType.MESSAGE_EVENT, MessageEvent, 
@@ -59,7 +85,7 @@ async def schedule_handler(event: MessageEvent):
 # Обработчик кнопки "Мои оценки"
 @bot.on.raw_event(GroupEventType.MESSAGE_EVENT, MessageEvent,
                   rules.PayloadContainsRule({'state': 'grades'}))
-async def get_grades(event: MessageEvent):
+async def grades_handler(event: MessageEvent):
     await event.send_message("Функционал еще не реализован")
     await event.send_empty_answer()
     await bot.state_dispenser.set(event.peer_id, MenuStates.GRADE_STATE)

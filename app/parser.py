@@ -1,8 +1,13 @@
 import json
+import os
+import requests
+from urllib.parse import urlencode
+from zipfile import ZipFile
+import pandas as pd
 from openpyxl import load_workbook, worksheet
 from openpyxl.cell.cell import MergedCell
 import gdown
-from config import GOOGLE_DRIVE_URL, DataFiles
+from config import GOOGLE_DRIVE_URL, API_URL, YANDEX_DRIVE_URL, DataFiles
 
 
 def download_schedule_file(share_link=GOOGLE_DRIVE_URL, output_path=DataFiles.SCHEDULE_FILE.value):
@@ -18,6 +23,76 @@ def download_schedule_file(share_link=GOOGLE_DRIVE_URL, output_path=DataFiles.SC
     except Exception as e:
         print(f"Ошибка при скачивании файла: {e}")
         return
+
+def download_students_marks_from_yandex_disk(url: str = YANDEX_DRIVE_URL):
+    """
+    Загрузка новых данных по студентам с Яндекс Диска для админки
+
+    :param url: URL ссылка на Яндекс Диск
+    :return:
+    """
+    try:
+        final_url = API_URL + urlencode(dict(public_key=url))
+        response = requests.get(final_url)
+        download_url = response.json()['href']
+
+        download_response = requests.get(download_url)
+        with open('downloaded_file.zip', 'wb') as f:
+            f.write(download_response.content)
+        with ZipFile('downloaded_file.zip', 'r') as f:
+            f.extractall('../data/xlsx')
+        os.remove("downloaded_file.zip")
+        parse_data_into_json()
+        return f'Успешно!'
+    except Exception as e:
+        return f'Что-то пошло не так при загрузке файла с Яндекс Диска: {e}'
+
+
+def parse_data_into_json():
+    """
+    Парсинг данных из папки xlsx в students.json
+
+    :return:
+    """
+    data_xlsx_dir = '../data/xlsx'
+    students_data_as_list = []
+    students_data_as_dict = {}
+    dir_list = os.listdir(data_xlsx_dir)
+
+    try:
+        for dir in dir_list:
+            files_list = os.listdir(data_xlsx_dir + '/' + dir)
+            for file in files_list:
+                excel_reader = pd.ExcelFile(data_xlsx_dir + '/' + dir + '/' + file)
+                sheet_to_df_map = {}
+                for sheet_name in excel_reader.sheet_names:
+                    sheet_to_df_map[sheet_name] = excel_reader.parse(sheet_name, index_col=0, skiprows=2)
+                    students_data_as_list += (sheet_to_df_map[sheet_name].to_dict(orient="records"))
+        # Удаляем дубликаты, оставляя первое вхождение
+        students_data_as_list = remove_duplicates(students_data_as_list)
+        for student in students_data_as_list:
+            try:
+                student_id = int(student.pop('Студенч. номер'))
+            except:
+                continue
+            students_data_as_dict[student_id] = student
+        with open(DataFiles.STUDENTS_FILE.value, 'w', encoding='utf-8') as f:
+            json.dump(students_data_as_dict, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        print(f'Ошибка: {e}')
+
+
+def remove_duplicates(students):
+    seen = set()
+    unique_students = []
+    
+    for student in students:
+        student_id = student["Студенч. номер"]
+        if student_id not in seen:
+            seen.add(student_id)
+            unique_students.append(student)
+    
+    return unique_students
 
 def increase_column_index(index:str, increase_value:int) -> str:
     try:
