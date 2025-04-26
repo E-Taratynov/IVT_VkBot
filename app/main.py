@@ -2,7 +2,7 @@ from vkbottle.bot import Bot, Message, MessageEvent, rules
 from vkbottle import GroupEventType, Keyboard, BaseStateGroup, Callback
 from utils import (get_schedule_classrooms,
 get_schedule_groups, get_schedule_professors, get_formatted_output, check_if_registered,
-check_if_student_exists, get_student_marks_by_user_id, add_new_user)
+check_if_student_exists, get_student_marks_by_user_id, add_new_user, delete_user)
 from config import TOKEN, DataFiles
 import logging
 
@@ -30,6 +30,7 @@ home_keyboard = (
     Keyboard(one_time=False, inline=False)
     .add(Callback('Расписание', payload={'cmd': 'schedule', 'text': 'Расписание'}))
     .add(Callback('Мои оценки', payload={'state': 'grades', 'text': 'Мои оценки'}))
+    .add(Callback('Отменить регистрацию', payload={'cmd': 'delete_user', 'text': 'Отменить регистрацию'}))
 )
 
 schedule_keyboard = (
@@ -40,7 +41,7 @@ schedule_keyboard = (
     .row()
     .add(Callback('По преподавателям', payload={'state': 'schedule_professors'}))
     .row()
-    .add(Callback('Назад', payload={'state': 'home', 'text': 'Назад'}))
+    .add(Callback('Назад', payload={'cmd': 'return', 'text': 'Назад'}))
 )
 
 # Обработчик команды /start
@@ -68,11 +69,23 @@ async def registration_handler(event: MessageEvent):
 async def register_user(message: Message):
     student_id = message.text
     if await check_if_student_exists(student_id):
-        await add_new_user(message.peer_id, student_id)
-        await message.answer("Успешная регистрация", keyboard=home_keyboard)
-        await bot.state_dispenser.set(message.peer_id, MenuStates.HOME_STATE)
+        response = await add_new_user(message.peer_id, student_id)
+        if response['success']:
+            await message.answer(response['text'], keyboard=home_keyboard)
+            await bot.state_dispenser.set(message.peer_id, MenuStates.HOME_STATE)
+        else:
+            await message.answer(response['text'])
     else:
         await message.answer("Студента с данным номером билета не существует")
+
+# Обработчик кнопки "Отменить регистрацию"
+@bot.on.raw_event(GroupEventType.MESSAGE_EVENT, MessageEvent,
+                  rules.PayloadContainsRule({'cmd': 'delete_user'}))
+async def user_deletion_handler(event: MessageEvent):
+    response = await delete_user(event.peer_id)
+    await event.send_message(response['text'], keyboard=unregistered_keyboard)
+    await bot.state_dispenser.set(event.peer_id, MenuStates.UNREGISTERED_STATE)
+    await event.send_empty_answer()
 
 # Обработчик кнопки "Расписание"    
 @bot.on.raw_event(GroupEventType.MESSAGE_EVENT, MessageEvent, 
@@ -93,11 +106,16 @@ async def grades_handler(event: MessageEvent):
 
 # Обработчик кнопки "Назад"
 @bot.on.raw_event(GroupEventType.MESSAGE_EVENT, MessageEvent,
-                  rules.PayloadContainsRule({'state': 'home'}))
+                  rules.PayloadContainsRule({'cmd': 'return'}))
 async def return_home(event: MessageEvent):
-    await event.send_message(event.get_payload_json().get('text'), keyboard=home_keyboard)
+    if await check_if_registered(event.peer_id):
+        await event.send_message(event.get_payload_json().get('text'), keyboard=home_keyboard)
+        await bot.state_dispenser.set(event.peer_id, MenuStates.HOME_STATE)
+    else:
+        await event.send_message(event.get_payload_json().get('text'), keyboard=unregistered_keyboard)
+        await bot.state_dispenser.set(event.peer_id, MenuStates.UNREGISTERED_STATE)
     await event.send_empty_answer()
-    await bot.state_dispenser.set(event.peer_id, MenuStates.HOME_STATE)
+    
 
 # Обработчик кпопки "По группам"
 @bot.on.raw_event(GroupEventType.MESSAGE_EVENT, MessageEvent,

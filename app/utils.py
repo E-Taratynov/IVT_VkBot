@@ -97,13 +97,22 @@ async def check_if_student_exists(student_id: str, students_file: str = DataFile
         return student_id in students.keys()
     return False
 
-async def add_new_user(user_id: int, student_id: str, users_file: str = DataFiles.USERS_FILE.value):
+async def add_new_user(user_id: int, student_id: str, users_file: str = DataFiles.USERS_FILE.value) -> dict:
     if os.path.exists(users_file):
         users = await load_json(users_file)
     else:
         users = {}
+    if student_id in users.values():
+        return {
+            'success': False,
+            'text': 'Данный пользователь уже зарегистрирован'
+        }
     users[str(user_id)] = student_id
     await save_json(users, users_file)
+    return {
+            'success': True,
+            'text': 'Успешная регистрация'
+        }
 
 async def get_student_marks_by_user_id(user_id: int, users_file: str = DataFiles.USERS_FILE.value,
                                        students_file: str = DataFiles.STUDENTS_FILE.value) -> str:
@@ -120,3 +129,29 @@ async def get_student_marks_by_user_id(user_id: int, users_file: str = DataFiles
         return 'Пользователь не найден'
     grades_str = '\n'.join(f"{key}: {value}" for key, value in grades_dict.items())
     return grades_str
+
+async def delete_user(user_id: int, users_file: str = DataFiles.USERS_FILE.value) -> dict:
+    if os.path.exists(users_file):
+        users = await load_json(users_file)
+    else:
+        return {
+            'success': False,
+            'text': 'Пользователь не найден'
+        }
+    try:
+        student_id = users.pop(str(user_id))
+        await save_json(users, users_file)
+        return {
+            'success': True,
+            'text': f'Данные студента {student_id} удалены'
+        }
+    except KeyError:
+        return {
+            'success': False,
+            'text': 'Пользователь не найден'
+        }
+    except Exception:
+        return {
+            'success': False,
+            'text': 'Произошла ошибка'
+        }
