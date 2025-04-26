@@ -83,8 +83,12 @@ async def register_user(message: Message):
                   rules.PayloadContainsRule({'cmd': 'delete_user'}))
 async def user_deletion_handler(event: MessageEvent):
     response = await delete_user(event.peer_id)
-    await event.send_message(response['text'], keyboard=unregistered_keyboard)
-    await bot.state_dispenser.set(event.peer_id, MenuStates.UNREGISTERED_STATE)
+    if response['success']:
+        await event.send_message(response['text'], keyboard=unregistered_keyboard)
+        await bot.state_dispenser.set(event.peer_id, MenuStates.UNREGISTERED_STATE)
+    else:
+        await event.send_message(response['text'], keyboard=home_keyboard)
+        await bot.state_dispenser.set(event.peer_id, MenuStates.HOME_STATE)
     await event.send_empty_answer()
 
 # Обработчик кнопки "Расписание"    
