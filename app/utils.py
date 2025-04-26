@@ -105,5 +105,18 @@ async def add_new_user(user_id: int, student_id: str, users_file: str = DataFile
     users[str(user_id)] = student_id
     await save_json(users, users_file)
 
-async def get_student_marks_by_user_id(user_id: int) -> str:
-    return 'Функционал пока не реализован'
+async def get_student_marks_by_user_id(user_id: int, users_file: str = DataFiles.USERS_FILE.value,
+                                       students_file: str = DataFiles.STUDENTS_FILE.value) -> str:
+    if os.path.exists(students_file) and os.path.exists(users_file):
+        students = await load_json(students_file)
+        users = await load_json(users_file)
+    else:
+        return "Оценки не найдены"
+    
+    try:
+        student_id = users[str(user_id)]
+        grades_dict = students[student_id]
+    except KeyError:
+        return 'Пользователь не найден'
+    grades_str = '\n'.join(f"{key}: {value}" for key, value in grades_dict.items())
+    return grades_str

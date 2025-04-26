@@ -14,7 +14,7 @@ class MenuStates(BaseStateGroup):
     HOME_STATE = 'home'
     UNREGISTERED_STATE = 'unregistered'
     REGISTERED_STATE = 'registered'
-    GRADE_STATE = 'grades'
+    GRADES_STATE = 'grades'
     SCHEDULE_STATE = 'schedule'
     SCHEDULE_STATE_GROUPS = 'schedule_groups'
     SCHEDULE_STATE_CLASSROOMS = 'schedule_classrooms'
@@ -86,9 +86,10 @@ async def schedule_handler(event: MessageEvent):
 @bot.on.raw_event(GroupEventType.MESSAGE_EVENT, MessageEvent,
                   rules.PayloadContainsRule({'state': 'grades'}))
 async def grades_handler(event: MessageEvent):
-    await event.send_message("Функционал еще не реализован")
+    grades = await get_student_marks_by_user_id(event.peer_id)
+    await event.send_message(grades)
     await event.send_empty_answer()
-    await bot.state_dispenser.set(event.peer_id, MenuStates.GRADE_STATE)
+    await bot.state_dispenser.set(event.peer_id, MenuStates.GRADES_STATE)
 
 # Обработчик кнопки "Назад"
 @bot.on.raw_event(GroupEventType.MESSAGE_EVENT, MessageEvent,
