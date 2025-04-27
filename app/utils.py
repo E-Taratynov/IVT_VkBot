@@ -164,6 +164,8 @@ async def get_formatted_output(filename: Literal[DataFiles.GROUPS, DataFiles.CLA
             return "Преподаватель не найден"
         schedule = format_schedule(professor_obj)
         return f"Расписание преподавателя: {professor_name}\n\n" + schedule
+    else:
+        return "Произошла ошибка"
 
 async def check_if_registered(user_id: int, users_file: str = DataFiles.USERS_FILE.value) -> bool:
     """Проверяет, зарегистрирован ли пользователь
