@@ -10,8 +10,15 @@ import gdown
 from config import GOOGLE_DRIVE_URL, API_URL, YANDEX_DRIVE_URL, DataFiles
 
 
-def download_schedule_file(share_link=GOOGLE_DRIVE_URL, output_path=DataFiles.SCHEDULE_FILE.value):
-    # Извлекаем ID файла из ссылки
+def download_schedule_file(share_link: str = GOOGLE_DRIVE_URL, output_path: str = DataFiles.SCHEDULE_FILE.value) -> str:
+    """Загружает файл с расписанием с Google Docs
+
+    Args:
+        share_link (str, optional): Ссылка на Google Docs. Defaults to GOOGLE_DRIVE_URL.
+        output_path (str, optional): Путь к .xlsx файлу с расписанием. Defaults to DataFiles.SCHEDULE_FILE.value.
+    Returns:
+        str: Статус
+    """
     link_split = share_link.split('/')[:6]
     link_until_id = '/'.join(link_split)
     
@@ -21,15 +28,17 @@ def download_schedule_file(share_link=GOOGLE_DRIVE_URL, output_path=DataFiles.SC
         # Скачиваем файл
         gdown.download(url=download_url, output=output_path, quiet=False, fuzzy=True)
     except Exception as e:
-        print(f"Ошибка при скачивании файла: {e}")
-        return
+        return f"Ошибка при загрузке расписания: {e}"
+    return "Успешная загрузка расписания"
 
-def download_students_marks_from_yandex_disk(url: str = YANDEX_DRIVE_URL):
-    """
-    Загрузка новых данных по студентам с Яндекс Диска для админки
+def download_students_marks_from_yandex_disk(url: str = YANDEX_DRIVE_URL) -> str:
+    """Загружает оценки студентов с Яндекс Диска и сохраняет в файле .json
 
-    :param url: URL ссылка на Яндекс Диск
-    :return:
+    Args:
+        url (str, optional): Ссылка на Яндекс Диск. Defaults to YANDEX_DRIVE_URL.
+
+    Returns:
+        str: Статус
     """
     try:
         final_url = API_URL + urlencode(dict(public_key=url))
@@ -43,12 +52,12 @@ def download_students_marks_from_yandex_disk(url: str = YANDEX_DRIVE_URL):
             f.extractall('../data/xlsx')
         os.remove("downloaded_file.zip")
         parse_data_into_json()
-        return f'Успешно!'
+        return f'Успешная загрузка оценок'
     except Exception as e:
-        return f'Что-то пошло не так при загрузке файла с Яндекс Диска: {e}'
+        return f'Ошибка при загрузке оценок: {e}'
 
 
-def parse_data_into_json():
+def parse_data_into_json(filename: str = DataFiles.STUDENTS_FILE.value):
     """
     Парсинг данных из папки xlsx в students.json
 
@@ -76,7 +85,7 @@ def parse_data_into_json():
             except:
                 continue
             students_data_as_dict[student_id] = student
-        with open(DataFiles.STUDENTS_FILE.value, 'w', encoding='utf-8') as f:
+        with open(filename, 'w', encoding='utf-8') as f:
             json.dump(students_data_as_dict, f, ensure_ascii=False, indent=4)
     except Exception as e:
         print(f'Ошибка: {e}')
@@ -209,6 +218,8 @@ def parse_classrooms(worksheet_name='аудитории', output_filename='class
         for cell in row:
             index = cell.coordinate
             classroom_name = int(ws[index].value)
+            if classroom_name is None:
+                continue
             index = increase_column_index(index, 1)
             classroom_description = '-' if ws[index].value is None else ws[index].value
             index = increase_column_index(index, 1)

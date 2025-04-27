@@ -9,30 +9,34 @@ import logging
 bot = Bot(token=TOKEN)
 logging.basicConfig(level=logging.INFO)
 
+# Список состояний
 class MenuStates(BaseStateGroup):
     REGISTRATION_STATE = 'registration'
     HOME_STATE = 'home'
     UNREGISTERED_STATE = 'unregistered'
-    REGISTERED_STATE = 'registered'
     GRADES_STATE = 'grades'
     SCHEDULE_STATE = 'schedule'
     SCHEDULE_STATE_GROUPS = 'schedule_groups'
     SCHEDULE_STATE_CLASSROOMS = 'schedule_classrooms'
     SCHEDULE_STATE_PROFESSORS = 'schedule_professors'
 
+# Клавиатура незарегистрированного пользователя
 unregistered_keyboard = (
     Keyboard(one_time=False, inline=False)
     .add(Callback('Расписание', payload={'cmd': 'schedule', 'text': 'Расписание'}))
     .add(Callback('Регистрация', payload={'cmd': 'register', 'text': 'Регистрация'}))
 )
 
+# Клавиатура зарегистрированного пользователя
 home_keyboard = (
     Keyboard(one_time=False, inline=False)
     .add(Callback('Расписание', payload={'cmd': 'schedule', 'text': 'Расписание'}))
     .add(Callback('Мои оценки', payload={'state': 'grades', 'text': 'Мои оценки'}))
+    .row()
     .add(Callback('Отменить регистрацию', payload={'cmd': 'delete_user', 'text': 'Отменить регистрацию'}))
 )
 
+# Клавиатура расписания
 schedule_keyboard = (
     Keyboard(one_time=False, inline=False)
     .add(Callback('По группам', payload={'state': 'schedule_groups'}))
@@ -111,7 +115,7 @@ async def grades_handler(event: MessageEvent):
 # Обработчик кнопки "Назад"
 @bot.on.raw_event(GroupEventType.MESSAGE_EVENT, MessageEvent,
                   rules.PayloadContainsRule({'cmd': 'return'}))
-async def return_home(event: MessageEvent):
+async def return_handler(event: MessageEvent):
     if await check_if_registered(event.peer_id):
         await event.send_message(event.get_payload_json().get('text'), keyboard=home_keyboard)
         await bot.state_dispenser.set(event.peer_id, MenuStates.HOME_STATE)
@@ -155,7 +159,7 @@ async def show_classrooms(event: MessageEvent):
 async def get_schedule_by_classroom(message: Message):
     classrooms = await get_schedule_classrooms()
     if message.text in classrooms:
-        await message.answer(await get_formatted_output())
+        await message.answer(await get_formatted_output(DataFiles.CLASSROOMS, message.text))
     else:
         await message.answer('Аудитория не найдена')
 
@@ -174,7 +178,7 @@ async def show_professors(event: MessageEvent):
 async def get_schedule_by_professor(message: Message):
     professors = await get_schedule_professors()
     if message.text in professors:
-        await message.answer(await get_formatted_output())
+        await message.answer(await get_formatted_output(DataFiles.PROFESSORS, message.text))
     else:
         await message.answer('Преподаватель не найден')
 
