@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 from enum import Enum
 
+
 # Enum для путей к файлам
 class DataFiles(Enum):
     SCHEDULE_FILE = 'schedule_file.xlsx'

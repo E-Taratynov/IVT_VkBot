@@ -1,5 +1,6 @@
 from vkbottle.bot import Bot, Message, MessageEvent, rules
 from vkbottle import GroupEventType, Keyboard, BaseStateGroup, Callback
+from parser import parse_all_info
 from utils import (get_schedule_classrooms,
 get_schedule_groups, get_schedule_professors, get_formatted_output, check_if_registered,
 check_if_student_exists, get_student_marks_by_user_id, add_new_user, delete_user)
@@ -189,4 +190,5 @@ async def default(message: Message):
 
 
 if __name__ == "__main__":
+    parse_all_info()
     bot.run_forever()

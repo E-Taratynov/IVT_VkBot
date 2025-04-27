@@ -8,16 +8,14 @@ from openpyxl import load_workbook, worksheet
 from openpyxl.cell.cell import MergedCell
 import gdown
 from config import GOOGLE_DRIVE_URL, API_URL, YANDEX_DRIVE_URL, DataFiles
+import logging
 
-
-def download_schedule_file(share_link: str = GOOGLE_DRIVE_URL, output_path: str = DataFiles.SCHEDULE_FILE.value) -> str:
+def download_schedule_file(share_link: str = GOOGLE_DRIVE_URL, output_path: str = DataFiles.SCHEDULE_FILE.value):
     """Загружает файл с расписанием с Google Docs
 
     Args:
         share_link (str, optional): Ссылка на Google Docs. Defaults to GOOGLE_DRIVE_URL.
         output_path (str, optional): Путь к .xlsx файлу с расписанием. Defaults to DataFiles.SCHEDULE_FILE.value.
-    Returns:
-        str: Статус
     """
     link_split = share_link.split('/')[:6]
     link_until_id = '/'.join(link_split)
@@ -28,8 +26,9 @@ def download_schedule_file(share_link: str = GOOGLE_DRIVE_URL, output_path: str 
         # Скачиваем файл
         gdown.download(url=download_url, output=output_path, quiet=False, fuzzy=True)
     except Exception as e:
-        return f"Ошибка при загрузке расписания: {e}"
-    return "Успешная загрузка расписания"
+        logging.info(f"Ошибка при загрузке расписания: {e}")
+        return
+    logging.info("Успешная загрузка расписания")
 
 def download_students_marks_from_yandex_disk(url: str = YANDEX_DRIVE_URL) -> str:
     """Загружает оценки студентов с Яндекс Диска и сохраняет в файле .json
@@ -52,9 +51,10 @@ def download_students_marks_from_yandex_disk(url: str = YANDEX_DRIVE_URL) -> str
             f.extractall('../data/xlsx')
         os.remove("downloaded_file.zip")
         parse_data_into_json()
-        return f'Успешная загрузка оценок'
     except Exception as e:
-        return f'Ошибка при загрузке оценок: {e}'
+        logging.info(f'Ошибка при загрузке оценок: {e}')
+        return
+    logging.info("Успешная загрузка оценок")
 
 
 def parse_data_into_json(filename: str = DataFiles.STUDENTS_FILE.value):
@@ -189,7 +189,8 @@ def parse_schedule_day(ws:worksheet, start_index:str):
     
     return day_subjects
 
-def parse_schedule_by_groups(input_filename="schedule_file.xlsx", worksheet_name="Бакалавры и магистры"):
+def parse_schedule_by_groups(worksheet_name="Бакалавры и магистры", output_filename: str = DataFiles.GROUPS.value,
+                             input_filename: str = DataFiles.SCHEDULE_FILE.value):
     wb = load_workbook(input_filename)
     ws = wb[worksheet_name]
     schedule_by_groups = []
@@ -207,10 +208,12 @@ def parse_schedule_by_groups(input_filename="schedule_file.xlsx", worksheet_name
                     'subjects': week_subjects
                 }
             )
-    with open('schedule_by_groups.json', 'w', encoding='utf-8') as file:
+    with open(output_filename, 'w', encoding='utf-8') as file:
         json.dump(schedule_by_groups, file, ensure_ascii=False, indent=4)
+    logging.info("Парсинг расписания по группам завершен")
 
-def parse_classrooms(worksheet_name='аудитории', output_filename='classrooms.json', input_filename='schedule_file.xlsx'):
+def parse_classrooms(worksheet_name='аудитории', output_filename: str = DataFiles.CLASSROOMS.value,
+                      input_filename: str = DataFiles.SCHEDULE_FILE.value):
     wb = load_workbook(input_filename)
     ws = wb[worksheet_name]
     classrooms = []
@@ -234,8 +237,10 @@ def parse_classrooms(worksheet_name='аудитории', output_filename='class
             )
     with open(output_filename, 'w', encoding='utf-8') as file:
         json.dump(classrooms, file, ensure_ascii=False, indent=4)
+    logging.info("Парсинг расписания по аудиториям завершен")
     
-def parse_professors(worksheet_name='Преподаватели', output_filename='professors.json', input_filename='schedule_file.xlsx'):
+def parse_professors(worksheet_name='Преподаватели', output_filename:str = DataFiles.PROFESSORS.value,
+                      input_filename: str = DataFiles.SCHEDULE_FILE.value):
     wb = load_workbook(input_filename)
     ws = wb[worksheet_name]
     professors_list = []
@@ -255,8 +260,14 @@ def parse_professors(worksheet_name='Преподаватели', output_filenam
             )
     with open(output_filename, 'w', encoding='utf-8') as file:
         json.dump(professors_list, file, ensure_ascii=False, indent=4)
+    logging.info("Парсинг расписания по преподавателям завершен")
 
-def parse_all_sheets():
+def parse_all_info():
+    download_schedule_file()
+    download_students_marks_from_yandex_disk()
     parse_schedule_by_groups()
     parse_classrooms()
     parse_professors()
+    schedule_file = DataFiles.SCHEDULE_FILE.value
+    if os.path.exists(schedule_file):
+        os.remove(schedule_file)
