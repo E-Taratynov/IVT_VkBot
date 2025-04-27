@@ -38,27 +38,134 @@ async def get_formatted_output(filename: Literal[DataFiles.GROUPS, DataFiles.CLA
                                                  DataFiles.PROFESSORS],
                                                  search_str: str) -> str:
     file = load_json(filename.value)
-    output = ''
     if filename == DataFiles.GROUPS:
         group_obj = next((obj for obj in file if obj.get('group_name') == search_str), None)
         if group_obj is None:
             return "Группа не найдена"
-        subjects = group_obj['subjects']
-        for day in subjects:
-            output += day['day'] + '\n'
-            day_str = ''
-            for subject in day['subjects']:
-                day_str += 'Пара:' + str(subject['class']) + ' '
-                day_str += subject['subject']
-                if subject['numerator'] == True:
-                    day_str += ' - по числителю'
-                elif subject['denominator'] == True:
-                    day_str += ' - по знаменателю'
-                day_str += '\n'
-            output += day_str
-        return output
+        
+        return format_week_schedule(group_obj)
     else:
         return 'Здесь будет форматированный вывод'
+    
+    if filename == DataFiles.CLASSROOMS:
+        classroom_obj = next((obj for obj in file if obj.get('classroom') == search_str), None)
+        if classroom_obj is None:
+            return "Аудитория не найдена"
+        
+        return format_classroom_schedule(classroom_obj)
+    else:
+        return 'Здесь будет форматированный вывод'
+
+    if filename == DataFiles.PROFESSORS:
+        professor_obj = next((obj for obj in file if obj.get('professor') == search_str), None)
+        if professor_obj is None:
+            return "Преподаватель не найден"
+        
+        return format_professor_schedule(professor_obj)
+    else:
+        return 'Здесь будет форматированный вывод'
+
+
+def format_week_schedule(group_obj: dict) -> str:
+    subjects = group_obj['subjects']
+    result = [f"Расписание на неделю:\n"]
+
+    for day in subjects:
+        day_name = day["day"].capitalize()
+
+        classes = {}
+        for subject in day["subjects"]:
+            class_num = subject["class"]
+            if class_num not in classes:
+                classes[class_num] = {"common": None, "numerator": None, "denominator": None}
+            if subject["common"]:
+                classes[class_num]["common"] = subject["subject"]
+            elif subject["numerator"]:
+                classes[class_num]["numerator"] = subject["subject"]
+            elif subject["denominator"]:
+                classes[class_num]["denominator"] = subject["subject"]
+
+        result.append(f"\U0001F4C5 {day_name}")
+        if not classes:
+            result.append(f"\U0000274C Нет пар\n")
+            continue
+
+        for class_num in sorted(classes.keys()):
+            entry = classes[class_num]
+            pair_label = f"{class_num} пара"
+            if entry["common"]:
+                result.append(f"{pair_label} — {entry['common']}")
+            else:
+                result.append(f"{pair_label}:\n"
+                            f"\U0001F538Числитель — {entry['numerator'] or 'Нет пары'}\n"
+                            f"\U0001F539Знаменатель — {entry['denominator'] or 'Нет пары'}")
+
+        result.append("")  
+
+    return "\n".join(result)
+
+def format_classroom_schedule(classroom_data: dict) -> str:
+    result = [f"\U0001F4C5 Расписание аудитории {classroom_data['classroom']}:"]
+    result.append(f"\U0001F5A5 {classroom_data['description']}\n")
+
+    for day in classroom_data['subjects']:
+        day_name = day['day'].capitalize()
+        schedules = day['subjects']
+
+        result.append(f"\U0001F4C5 {day_name}:")
+
+        for schedule in schedules:
+            subject = schedule['subject']
+            class_num = schedule['class']
+            if subject != "-": 
+                result.append(f"{class_num} пара — {subject}")
+
+        result.append("") 
+
+    return "\n".join(result)
+
+def format_professor_schedule(week_data: dict) -> str:
+    professor = week_data["professor"]
+    days = week_data["subjects"]
+    result = [f"Расписание на неделю для {professor}:\n"]
+
+    for day in days:
+        day_name = day["day"].capitalize()
+        subjects = day["subjects"]
+
+        if not any(subject["subject"] not in ["-", ""] for subject in subjects):
+            continue  
+     
+        classes = {}
+        for item in subjects:
+            class_num = item["class"]
+            if class_num not in classes:
+                classes[class_num] = {"common": None, "numerator": None, "denominator": None}
+            if item["common"]:
+                classes[class_num]["common"] = item["subject"]
+            elif item["numerator"]:
+                classes[class_num]["numerator"] = item["subject"]
+            elif item["denominator"]:
+                classes[class_num]["denominator"] = item["subject"]
+
+        result.append(f"\U0001F4C5 {day_name}")
+        if not classes:
+            result.append(f"\U0000274C Нет пар\n")
+            continue
+
+        for class_num in sorted(classes.keys()):
+            entry = classes[class_num]
+            pair_label = f"{class_num} пара"
+            if entry["common"]:
+                result.append(f"{pair_label} — {entry['common']}")
+            else:
+                result.append(f"{pair_label}:\n"
+                              f"\U0001F538Числитель — {entry['numerator'] or 'Нет пары'}\n"
+                              f"\U0001F539Знаменатель — {entry['denominator'] or 'Нет пары'}")
+
+        result.append("")  
+
+    return "\n".join(result)
 
 async def load_json(filename: str):
     """
